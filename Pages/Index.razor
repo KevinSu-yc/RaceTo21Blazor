@@ -1,0 +1,480 @@
+﻿@page "/"
+
+<div class="container">
+    @if (game.NextTask == GameTask.GetNumberOfPlayers)
+    {
+        <div class="alert bg-light shadow">
+            <div class="row mt-sm-5 mb-3">
+                <div class="col">
+                    <h1 class="text-center"><strong>Welcome to Race to 21!</strong></h1>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col">
+                    <div class="form-group row">
+                        <label for="playerCount" class="col-sm-6 col-form-label text-sm-right">How Many Players?</label>
+                        <div class="col-sm-auto">
+                            <select class="custom-select" id="playerCount" @onchange="e => SetPlayers(e)">
+                                <option value="2" selected>2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                                <option value="5">5</option>
+                                <option value="6">6</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="winTimes" class="col-sm-6 col-form-label text-sm-right">How many times do a player have to win to end the game?</label>
+                        <div class="col-sm-auto">
+                            <select class="custom-select" id="winTimes" @bind="game.TimesToWin">
+                                <option value="3" selected>3</option>
+                                <option value="4">4</option>
+                                <option value="5">5</option>
+                                <option value="6">6</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col">
+                            <hr />
+                        </div>
+                    </div>
+
+                    @for (int i = 0; i < game.NumberOfPlayers; i++)
+                    {
+                        int playerNumber = i;
+                        string id = $"playerName_{playerNumber + 1}";
+                        bool isRepeated = game.CheckRepeatName(playerNumber);
+
+                        <div class="form-group row">
+                            <label for="@id" class="col-sm-6 col-form-label text-sm-right">Player @(playerNumber + 1)</label>
+                            <div class="col-sm-auto">
+                                <input type="text" class="form-control @(isRepeated ? "is-invalid" : "")" id="@id" name="@id" placeholder="Enter Player Name"
+                                       @bind="game.Players[playerNumber].Name" required autocomplete="off">
+                                <div class="invalid-feedback">
+                                    Please provide unique names.
+                                </div>
+                            </div>
+                        </div>
+                        playersAreValid = game.ValidatePlayers();
+                    }
+
+                    <div class="row justify-content-center mt-sm-5">
+                        <div class="col-sm-3">
+                            @if (playersAreValid)
+                            {
+                                <button type="button" class="btn btn-block btn-dark" @onclick="() => bets = game.AskBet()">Next</button>
+                            }
+                            else
+                            {
+                                <button type="button" class="btn btn-block btn-dark" disabled>Next</button>
+                            }
+                        </div>
+                    </div>
+                    <div class="row justify-content-center mt-sm-3">
+                        @if (playersAreValid)
+                        {
+                            <div class="col-sm-6 alert alert-success">
+                                The game ends when a player <strong>Wins @game.TimesToWin Times</strong> or <strong>No More Than 1 Player</strong> wants to keep playing.
+                                When the game ends, the player with the <strong>most CASH</strong> is the final winner!
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else if (game.NextTask == GameTask.AskBet)
+    {
+        <h6>The winner of this round wins the total of twice amount of cash every player bets.</h6>
+        <h2>How much do you want to bet?</h2>
+        @for (int i = 0; i < game.InGamePlayers.Count; i++)
+        {
+            int playerIndex = i;
+            Player p = game.InGamePlayers[playerIndex];
+            <div class="row alert alert-secondary align-items-center py-4 px-0">
+                <div class="col-sm-3 text-sm-center">
+                    <h4><strong>@p.Name</strong></h4>
+                    <h6>$@p.cash / @(p.wins > 1 ? $"{p.wins} wins" : $"{p.wins} win")</h6>
+                </div>
+                <div class="col-sm-2">
+                    <div class="row align-items-center">
+                        <span>$</span>
+                        <input type="number" class="form-control col ml-2 @(!betsRecord[playerIndex] ? "is-invalid" : "")" id="@($"playerCash_{playerIndex + 1}")" name="@($"playerCash_{playerIndex + 1}")"
+                               value="@Game.defaultBet" min="1" max="@(p.cash + bets[playerIndex])" @onchange="e => bet(e, playerIndex)">
+                        <div class="invalid-feedback">
+                            Invaid Bet.
+                        </div>
+                    </div>
+                </div>
+                @if (p.cash == 0)
+                {
+                    <div class="col-sm-auto">
+                        <span class="form-text">( You are betting all your cash )</span>
+                    </div>
+                }
+            </div>
+        }
+
+        <div class="row">
+            <div class="col">
+                <hr />
+            </div>
+        </div>
+
+        <h4 class="text-center">The total amount in pot is: $@(game.CurrentPot).</h4>
+        <div class="row justify-content-center">
+            <div class="col-3 my-3">
+                @if (betsAreValid)
+                {
+                    <button class="btn btn-dark btn-block" @onclick="game.StartPlay">START</button>
+                }
+                else
+                {
+                    <button class="btn btn-dark btn-block" @onclick="game.StartPlay" disabled>START</button>
+                }
+
+            </div>
+        </div>
+    }
+    else if (game.NextTask == GameTask.OfferFirstCard)
+    {
+        <h2>The total amount in pot is: $@(game.CurrentPot).</h2>
+        @for (int i = 0; i < game.InGamePlayers.Count; i++)
+        {
+            int playerIndex = i;
+            Player p = game.InGamePlayers[playerIndex];
+
+            <div class="row row-player @(playerIndex == game.CurrentPlayer ? "row-player-on" : "") align-items-center">
+                <div class="col-sm-3 text-sm-center">
+                    <h4><strong class="@(playerIndex == game.CurrentPlayer ? "player-on" : "")">@p.Name</strong></h4>
+                    <h6>$@p.cash / @(p.wins > 1 ? $"{p.wins} wins" : $"{p.wins} win")</h6>
+                </div>
+                <div class="col">
+                    <div class="row align-items-center">
+                        @foreach (Card card in p.cards)
+                        {
+                            <img src="./sample-data/card-img/@game.Deck.cardImageName[card.Id]" />
+                        }
+                    </div>
+                </div>
+                <div class="col-sm-3 text-sm-center">
+                    <h4><strong>@p.score</strong></h4>
+                    @if (playerIndex == game.CurrentPlayer)
+                    {
+                        if (p.status == PlayerStatus.active)
+                        {
+                            <button type="button" class="btn btn-dark" @onclick="() => roundWinner = game.Deal(p)">Deal</button>
+                            <button type="button" class="btn btn-light" @onclick="() => roundWinner = game.StayPlayer(p)">Stay</button>
+                        }
+                        else if (p.status == PlayerStatus.stay)
+                        {
+                            <div class="status-player status-stay">Stay</div>
+                            roundWinner = game.NextTurn();
+                            StateHasChanged(); // Need to call this function if the method is not called by events (ex: onclick or onchange)
+                        }
+                        else if (p.status == PlayerStatus.bust)
+                        {
+                            <div class="status-player status-bust">Bust</div>
+                            roundWinner = game.NextTurn();
+                            StateHasChanged();
+                        }
+                    }
+                    else
+                    {
+                        if (p.status == PlayerStatus.active)
+                        {
+                            <div class="status-player status-active">Active</div>
+                        }
+                        else if (p.status == PlayerStatus.stay)
+                        {
+                            <div class="status-player status-stay">Stay</div>
+                        }
+                        else if (p.status == PlayerStatus.bust)
+                        {
+                            <div class="status-player status-bust">Bust</div>
+                        }
+                    }
+                </div>
+            </div>
+        }
+    }
+    else if (game.NextTask == GameTask.AnnounceCurrentWinner)
+    {
+        @for (int i = 0; i < game.InGamePlayers.Count; i++)
+        {
+            int playerIndex = i;
+            Player p = game.InGamePlayers[playerIndex];
+            <div class="row row-player @(p.status == PlayerStatus.win ? "row-player-win" : "") align-items-center">
+                <div class="col-sm-3 text-sm-center">
+                    <h4><strong class="@(p.status == PlayerStatus.win ? "player-win" : "")">@p.Name</strong></h4>
+                    <h6>$@p.cash / @(p.wins > 1 ? $"{p.wins} wins" : $"{p.wins} win")</h6>
+                </div>
+                <div class="col">
+                    <div class="row align-items-center">
+                        @foreach (Card card in p.cards)
+                        {
+                            <img src="./sample-data/card-img/@game.Deck.cardImageName[card.Id]" />
+                        }
+                    </div>
+                </div>
+                <div class="col-sm-3 text-sm-center">
+                    <h4><strong>@p.score</strong></h4>
+                    @if (p.status == PlayerStatus.win)
+                    {
+                        <div class="status-player status-win">Win</div>
+                    }
+                    else if (p.status == PlayerStatus.stay)
+                    {
+                        <div class="status-player status-stay">Stay</div>
+                    }
+                    else if (p.status == PlayerStatus.bust)
+                    {
+                        <div class="status-player status-bust">Bust</div>
+                    }
+                </div>
+            </div>
+        }
+
+        <div class="row">
+            <div class="col">
+                <hr />
+            </div>
+        </div>
+
+        <h4 class="text-center"><strong>@roundWinner.Name</strong> wins $@(game.CurrentPot)!</h4>
+        <div class="row justify-content-center">
+            <div class="col-3 my-3">
+                <button class="btn btn-dark btn-block" @onclick="() => game.CheckNewRound(roundWinner)">CONTINUE</button>
+            </div>
+        </div>
+    }
+    else if (game.NextTask == GameTask.CheckForNewGame)
+    {
+        <h2>Do you want to keep playing?</h2>
+        @for (int i = 0; i < game.InGamePlayers.Count; i++)
+        {
+            int playerIndex = i;
+            Player p = game.InGamePlayers[playerIndex];
+            string radioId = $"nextRadio{playerIndex}";
+            <div class="row alert alert-secondary align-items-center py-4 px-0">
+                <div class="col-sm-3 text-sm-center">
+                    <h4><strong>@p.Name</strong></h4>
+                    <h6>$@p.cash / @(p.wins > 1 ? $"{p.wins} wins" : $"{p.wins} win")</h6>
+                </div>
+                <div class="col-sm-auto">
+                    @if (p.cash == 0)
+                    {
+                        <h6>You have no more cash :(</h6>
+                    }
+                    else
+                    {
+                        <div class="row align-items-center">
+                            <div class="form-check form-check-inline mr-5">
+                                <input class="form-check-input resized-radio" type="radio" name="@radioId" id="@(radioId + "Y")" checked @onchange="e => UpdateKeepPlaying(e, playerIndex)" value="Yes">
+                                <label class="form-check-label resized-radio-label" for="@(radioId + "Y")">Yes</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input resized-radio" type="radio" name="@radioId" id="@(radioId + "N")" @onchange="e => UpdateKeepPlaying(e, playerIndex)" value="No">
+                                <label class="form-check-label resized-radio-label" for="@(radioId + "N")">No</label>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        <div class="row justify-content-center">
+            <div class="col-3 my-3">
+                <button class="btn btn-dark btn-block" @onclick="CheckNewGame">NEXT</button>
+            </div>
+        </div>
+    }
+    else if (game.NextTask == GameTask.AnnounceFinalWinner)
+    {
+        <div class="row justify-content-center">
+            <h2>GAME OVER</h2>
+        </div>
+
+        <div class="row justify-content-center">
+            <p>@game.endGameReason</p>
+        </div>
+
+        <div class="row my-2 justify-content-center">
+            <div class="col-sm-auto alert alert-warning py-sm-4 px-sm-5">
+                <div class="row justify-content-center">
+                    <img src="./sample-data/crown.png" width="30" height="30" />
+                </div>
+                <div class="row justify-content-center">
+                    <h1>@game.rankedPlayers[0].Name</h1>
+                </div>
+                <div class="row justify-content-center">
+                    <p>is the final winner by winning</p>
+                </div>
+                <div class="row justify-content-center">
+                    <h3>$@game.rankedPlayers[0].cash</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col">
+                <hr />
+            </div>
+        </div>
+
+        <div class="row align-items-baseline justify-content-center mt-2">
+            <h4>Rank</h4>
+            <small class="ml-sm-2 text-black-50">(* Rank order: cash -> wins -> player name *)</small>
+        </div>
+
+        @for (int i = 0; i < game.NumberOfPlayers; i++)
+        {
+            int playerIndex = i;
+            Player p = game.rankedPlayers[playerIndex];
+            double percentage = p.cash * 100.0 / game.rankedPlayers[0].cash;
+            <div class="row alert alert-secondary align-items-center justify-content-between">
+                <div class="col-sm-auto">
+                    @(playerIndex + 1)
+                </div>
+                <div class="col-sm-2">
+                    @p.Name
+                </div>
+                <div class="col-sm">
+                    <div class="progress">
+                        <div class="progress-bar bg-secondary" role="progressbar" style="width: @((int)percentage + "%")" aria-valuenow="@((int)percentage)" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                </div>
+                <div class="col-sm-auto text-sm-right">
+                    $@p.cash
+                </div>
+                <div class="col-sm-auto">
+                    <div class="wins-wrapper">
+                        @(p.wins > 1 ? p.wins + " wins" : p.wins + " win")
+                    </div>
+                </div>
+            </div>
+        }
+        <div class="row justify-content-center">
+            <div class="col-3 my-3">
+                <button type="button" class="btn btn-dark btn-block" @onclick="StartNewGame">New Game</button>
+            </div>
+        </div>
+    }
+</div>
+
+@code
+{
+    Game game = new Game();
+    bool playersAreValid = false;
+
+    int[] bets = { Game.defaultBet, Game.defaultBet };
+    bool[] betsRecord = { true, true };
+    bool betsAreValid
+    {
+        get
+        {
+            foreach (bool r in betsRecord)
+            {
+                if (r == false) return false;
+            }
+            return true;
+        }
+    }
+
+    string[] keepPlaying = { "Yes", "Yes" };
+
+    Player roundWinner = new Player("");
+
+    public void bet(ChangeEventArgs e, int playerIndex)
+    {
+        int bet = int.Parse(e.Value.ToString());
+        Player p = game.InGamePlayers[playerIndex];
+
+        if (bet > p.cash + bets[playerIndex] || bet < 1)
+        {
+            betsRecord[playerIndex] = false;
+            return;
+        }
+
+        game.CollectBet(bet - bets[playerIndex], playerIndex);
+        bets[playerIndex] = bet;
+        betsRecord[playerIndex] = true;
+
+        return;
+    }
+
+    protected override void OnInitialized()
+    {
+        game.SetUpGame();
+        playersAreValid = game.ValidatePlayers();
+    }
+
+    public void StartNewGame()
+    {
+        game = new Game();
+        game.SetUpGame();
+        playersAreValid = game.ValidatePlayers();
+
+        playersAreValid = false;
+        bets = new int[] { Game.defaultBet, Game.defaultBet };
+        betsRecord = new bool[] { true, true };
+        keepPlaying = new string[] { "Yes", "Yes" };
+        roundWinner = new Player("");
+    }
+
+    public void SetPlayers(ChangeEventArgs e)
+    {
+        int count = int.Parse(e.Value.ToString());
+        game.SetPlayers(count);
+
+        bets = new int[count];
+        betsRecord = new bool[count];
+        keepPlaying = new string[count];
+        for (int i = 0; i < count; i++)
+        {
+            bets[i] = Game.defaultBet;
+            betsRecord[i] = true;
+            keepPlaying[i] = "Yes";
+        }
+    }
+
+    public void UpdateKeepPlaying(ChangeEventArgs e, int playerIndex)
+    {
+        keepPlaying[playerIndex] = e.Value.ToString();
+    }
+
+    public void CheckNewGame()
+    {
+        game.CheckNewGame(keepPlaying);
+        if (game.NextTask == GameTask.AnnounceFinalWinner)
+        {
+            return;
+        }
+
+        int count = game.InGamePlayers.Count;
+        bets = new int[count];
+        betsRecord = new bool[count];
+        keepPlaying = new string[count];
+        for (int i = 0; i < count; i++)
+        {
+
+            if (game.InGamePlayers[i].cash >= Game.defaultBet)
+            {
+                bets[i] = Game.defaultBet;
+                betsRecord[i] = true;
+                game.CollectBet(bets[i], i);
+            }
+            else
+            {
+                bets[i] = 0;
+                betsRecord[i] = false;
+            }
+
+            keepPlaying[i] = "Yes";
+        }
+    }
+}
+

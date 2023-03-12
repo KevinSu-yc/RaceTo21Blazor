@@ -1,0 +1,70 @@
+﻿
+body {
+    font-family: 'Ubuntu', sans-serif;
+}
+
+.row-player {
+    position: relative;
+    padding: 1.5rem 0;
+    margin-bottom: 0.5rem;
+    border-radius: 0.25rem;
+    background-color: #dce1de;
+}
+
+.row-player-on {
+    border-left: 0.5rem solid #00a5cf;
+}
+
+.row-player-win {
+    border-left: 0.5rem solid #ffd900;
+}
+
+.player-on {
+    color: #00a5cf;
+}
+
+.player-win {
+    color: #ff8000;
+}
+
+.wins-wrapper, .status-player {
+    display: inline-block;
+    font-weight: 400;
+    line-height: 1.5;
+    color: #212529;
+    text-align: center;
+    vertical-align: middle;
+    padding: .375rem .75rem;
+    font-size: 1rem;
+    border-radius: .25rem;
+    font-weight: bold;
+}
+
+.wins-wrapper, .status-active {
+    color: #333;
+    background-color: #c4c4c4;
+}
+
+.status-stay {
+    color: #2c6e49;
+    background-color: #74c69d;
+}
+
+.status-bust {
+    color: #ff393d;
+    background-color: #ffabac;
+}
+
+.status-win {
+    color: #ff8000;
+    background-color: #ffd900;
+}
+
+.resized-radio {
+    width: 1.4rem;
+    height: 1.4rem;
+}
+
+.resized-radio-label {
+    font-size: 1.25rem;
+}
