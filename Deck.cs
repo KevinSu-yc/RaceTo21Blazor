@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq; // currently only needed if we use alternate shuffle method
 
 namespace RaceTo21Blazor
 {
@@ -8,7 +7,9 @@ namespace RaceTo21Blazor
     {
         // The cards and the image file names shouldn't be changed without using specific methods in Deck object so I set them to private.
         private List<Card> cards = new List<Card>(); // All the cards in the deck
-        public readonly Dictionary<string, string> cardImageName = new Dictionary<string, string>(); // A dictionary that helps get an image file name for a card according to it's short name
+
+        // A dictionary that helps get an image file name for a card according to it's short name
+        public readonly Dictionary<string, string> cardImageName = new Dictionary<string, string>(); // Images are placed in wwwroot/sample-data/card-img
 
         /// <summary>
         /// Represents a Deck that inlcudes 52 Cards.

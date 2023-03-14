@@ -9,67 +9,82 @@ namespace RaceTo21Blazor
     /// </summary>
     public class Game
     {
-        // The CardTable and the cheating mode don't have to be reachable in other classes so I set it as totally private
-        // private CardTable cardTable; // object in charge of displaying game information
-
-        // These fields should be read-only outside of Game object so other classes can't affect the game process.
+        // The player list should be read-only outside of Game object so other classes can only update the players by using public methods in this Game class.
         public List<Player> Players { get; private set; } = new List<Player>(); // list of objects containing player data 
+
+        // Represents the players that are still in game (status is not quit)
         public List<Player> InGamePlayers 
         { 
             get
             {
-                return Players.FindAll(player => player.status != PlayerStatus.quit);
+                return Players.FindAll(player => player.Status != PlayerStatus.quit);
             } 
         }
+
+        // Represents the all the players that are ranked (in the order of cash -> wins -> name)
         public List<Player> rankedPlayers
         {
+            /*
+             * I uses System.Linq for sorting the players
+             * https://learn.microsoft.com/en-us/dotnet/api/system.linq.enumerable.orderby?view=net-7.0 - OrderByDescending()
+             * https://learn.microsoft.com/en-us/dotnet/api/system.linq.queryable.thenby?view=net-7.0 - ThenBy()
+             * Uses List.OrderByDescending(player => player.cash) to order the players first according to their cash from most to least, 
+             * if the cash is same, uses ThenByDescending(player => player.wins) to keep ordering the players according to their times of win from most to least,
+             * if both above are the same, uses ThenBy(player => player.name) to keep ordering the players according to their names alphebatically.
+             */
             get
             {
-                return Players.OrderByDescending(player => player.cash).ThenByDescending(player => player.wins).ThenBy(player => player.Name).ToList();
+                return Players.OrderByDescending(player => player.Cash).ThenByDescending(player => player.Wins).ThenBy(player => player.Name).ToList();
             }
         }
 
+        // I use private set for these properties so other classes can only update the players by using public methods in this Game class.
         public Deck Deck { get; private set; } = new Deck(); // deck of cards
-        public int NumberOfPlayers { get; set; } // number of players in current game
+        public int NumberOfPlayers { get; private set; } // number of players in current game
         public int CurrentPlayer { get; private set; } = 0; // current player on list
-        public int CurrentPot { get; set; } = 0; // amount of bet put in current pot
-        public static readonly int defaultBet = 10;
-        public int TimesToWin { get; set; } = 3;
-        public string endGameReason;
-        public GameTask NextTask { get; private set; } // keeps track of game state
+        public int CurrentPot { get; private set; } = 0; // amount of bet put in current pot
+        public static readonly int defaultBet = 10; // I set a default bet to put in the web page input at the beginning
+        public GameTask NextTask { get; private set; } // keeps track of game state - I update the tasks to better fit game process of the Blazor version
+        public string EndGameReason { get; private set; } // the reason of why the game ends - is used on the Game Over page
+
+        // I make this public so the webpage can bind the value with the select element
+        public int TimesToWin { get; set; } = 3; // number of rounds to win the game
+        
 
         /// <summary>
-        /// Sets up the card table and suffle the deck while creaing the game. Initiated the task to starts the game process.
-        /// Called by Program.
+        /// Shuffle the deck while creaing the game. Initiate the task to starts the game process.
+        /// The default number of players is 2 as the web page is showing at the beginning.
         /// </summary>
-        /// <param name="c">The card table set up for the game</param>
         public Game()
         {
-            // cardTable = c;
             Deck.Shuffle();
 
             NumberOfPlayers = 2;
             Players = new List<Player>() { new Player(""), new Player("") };
 
-            NextTask = GameTask.GetNumberOfPlayers;
+            NextTask = GameTask.GetGameInfo;
         }
 
-        // These 4 methods use total players
-        public void SetUpGame()
-        {
-            Deck.Shuffle();
-            NextTask = GameTask.GetNumberOfPlayers;
-        }
+        /* SetPlayers(), CheckRepeatName(), ValidatePlayers(), and GoAskBet() are methods called before the game starts
+         * so they use the Players list that represents all the players that join the game
+         */
 
+        /// <summary>
+        /// Updates the Players list with unnamed players according to the number of players selected on the web page.
+        /// </summary>
+        /// <param name="count">Number of players selected on the web page</param>
         public void SetPlayers(int count)
         {
+            // If the user select less players
             if (count < NumberOfPlayers)
             {
+                // Keep the first number of players
                 Players = Players.Take(count).ToList();
                 NumberOfPlayers = count;
                 return;
             }
             
+            // The user select more players, add more unnamed players to the list to name them later
             for (int i = NumberOfPlayers; i < count; i++)
             {
                 AddPlayer("");
@@ -77,10 +92,16 @@ namespace RaceTo21Blazor
             NumberOfPlayers = count;
         }
 
-        public bool CheckRepeatName(int checkIndex)
+        /// <summary>
+        /// Check if there are more than 1 players who have the same names in the Player List.
+        /// </summary>
+        /// <param name="checkPlayer">The player to be checked</param>
+        /// <returns>Return true if there are more than 1 players who have the same names in the Player List. Otherwise, return false.</returns>
+        public bool CheckRepeatName(Player checkPlayer)
         {
-            string name = Players[checkIndex].Name;
-            if (name == "")
+            string name = checkPlayer.Name;
+
+            if (name == "") // If the player is unnamed, don't check
             {
                 return false;
             }
@@ -93,16 +114,17 @@ namespace RaceTo21Blazor
             return false;
         }
 
+        /// <summary>
+        /// Check if all players is Players List is named and unique.
+        /// </summary>
+        /// <returns>Return true if all players is Players List is named and unique. Otherwise, return false.</returns>
         public bool ValidatePlayers()
         {
-            if (Players.Find(p => p.Name == "") != null)
-            {
-                return false;
-            }
-
+            // Go through all players to check
             foreach (Player player in Players)
             {
-                if (Players.FindAll(p => p.Name == player.Name).Count > 1)
+                // First check if the player's name is an empty string, then check if the player name is unique
+                if (player.Name == "" || Players.FindAll(p => p.Name == player.Name).Count > 1)
                 {
                     return false;
                 }
@@ -111,63 +133,96 @@ namespace RaceTo21Blazor
             return true;
         }
 
-        // Methods below use in game players
-
-        public int[] AskBet()
+        /// <summary>
+        /// Set up the default bets for all the players and update the GameTask to go to the Ask Bet page.
+        /// </summary>
+        /// <returns>Returns an int array for storing each player's bet</returns>
+        public int[] GoAskBet()
         {
-            int[] bets = new int[InGamePlayers.Count];
+            // I keep track of how much each player bets on the web page with an int array
+            int[] bets = new int[NumberOfPlayers];
             NextTask = GameTask.AskBet;
-            for (int i = 0; i < InGamePlayers.Count; i++)
+
+            // Go through all the players
+            for (int i = 0; i < NumberOfPlayers; i++)
             {
-                int bet = (InGamePlayers[i].cash >= defaultBet) ? defaultBet : InGamePlayers[i].cash;
-                CollectBet(bet, i);
-                bets[i] = bet;
+                // Collect default bet when the game starts 
+                CollectBet(defaultBet, i);
+                bets[i] = defaultBet;
             }
             return bets;
         }
 
+        /* The methods below are called after the game starts
+         * so they use the InGamePlayers list that represents all the players who haven't quit
+         */
+
+        /// <summary>
+        /// Collect bet from given player and add twice of it to the current pot.
+        /// </summary>
+        /// <param name="betChange">Bet to be collected</param>
+        /// <param name="playerIndex">The index of the player to be collected from</param>
         public void CollectBet(int betChange, int playerIndex)
         {
             CurrentPot += 2 * betChange;
             InGamePlayers[playerIndex].Bet(betChange);
         }
 
+        /// <summary>
+        /// Update the game state to go to the Game Playing page, offer each player a card at the beginning.
+        /// </summary>
         public void StartPlay()
         {
-            NextTask = GameTask.OfferFirstCard;
+            NextTask = GameTask.PlayerTurn;
             foreach (Player p in InGamePlayers) // Loop through the players who haven't quit 
             {
                 Card card = Deck.DealTopCard();
-                p.cards.Add(card);
-                p.score = ScoreHand(p);
+                p.Cards.Add(card);
+                p.Score = ScoreHand(p);
             }
             return;
         }
 
+        /// <summary>
+        /// Deal a card to the given player then change to next turn and check if there's a winner.
+        /// </summary>
+        /// <param name="player">The player who wants a card</param>
+        /// <returns>Returns the player who wins the current round if there is one after deal this card</returns>
         public Player Deal(Player player)
         {
             Card card = Deck.DealTopCard();
-            player.cards.Add(card);
-            player.score = ScoreHand(player);
+            player.Cards.Add(card);
+            player.Score = ScoreHand(player);
 
-            if (player.score > 21) // If the total score is over 21, the player is busted
+            // Switch the player's status according to their score
+            if (player.Score > 21) // If the total score is over 21, the player is busted
             {
-                player.status = PlayerStatus.bust;
+                player.Status = PlayerStatus.bust;
             }
-            else if (player.score == 21) // If the total score is over 21, the player wins
+            else if (player.Score == 21) // If the total score is over 21, the player wins
             {
-                player.status = PlayerStatus.win;
+                player.Status = PlayerStatus.win;
             }
 
-            return NextTurn();
+            return NextTurn(); // NextTurn() changes turn and return a winner if there is one
         }
 
+        /// <summary>
+        /// Let the given player stay then change to next turn and check if there's a winner.
+        /// </summary>
+        /// <param name="player">The player who wants to stay</param>
+        /// <returns>Returns the player who wins the current round if there is one after the given player stays</returns>
         public Player StayPlayer(Player player)
         {
-            player.status = PlayerStatus.stay;
+            // switch the player's status to stay
+            player.Status = PlayerStatus.stay;
             return NextTurn();
         }
 
+        /// <summary>
+        /// Change to next turn and check if there's a winner of the current round appears.
+        /// </summary>
+        /// <returns>Return the winner if there's one, null if there's no winner</returns>
         public Player NextTurn()
         {
             CurrentPlayer++; // add 1 to currentPlayer to get to the next player's position
@@ -181,73 +236,97 @@ namespace RaceTo21Blazor
             {
                 // Determine whose the winner from the players who hasn't quit
                 Player winner = DoFinalScoring(InGamePlayers);
-                winner.status = PlayerStatus.win;
+                winner.Status = PlayerStatus.win;
 
-                // The winner gets the cash from pot and gets a win
-                winner.wins++;
+                // The winner gets a win
+                winner.Wins++;
 
-                NextTask = GameTask.AnnounceCurrentWinner;
+                // Switch the game state to go to the Announce Round Winner page
+                NextTask = GameTask.AnnounceRoundWinner;
                 return winner;
             }
 
-            return null;
+            return null; // Returns null if there is no winner yet
         }
 
+        /// <summary>
+        /// Pay the player who wins a round and 
+        /// switch the game state to go to the Check New Round page (or the Game Over page if the game ends).
+        /// </summary>
+        /// <param name="roundWinner">The player who wins a round</param>
         public void CheckNewRound(Player roundWinner)
         {
+            // Pay and Reset the pot
             Pay(roundWinner, CurrentPot);
-
-            CurrentPot = 0; // Reset the pot
-            CurrentPlayer = 0;
-            NextTask = GameTask.CheckForNewGame;
-            CheckNewGame();
+            CurrentPot = 0; 
+            
+            NextTask = GameTask.CheckForNewRound;
+            CheckEndGame(); // Check if the game meets the condition to end
         }
 
-        public void CheckNewGame()
+        /// <summary>
+        /// Overload method that doesn't take parameters.
+        /// Is called when a round winner appears.
+        /// Check if there's a player who wins enough times or only 1 player in game still has money.
+        /// </summary>
+        public void CheckEndGame()
         {
-            Player endGamePlayer = Players.Find(player => player.wins == TimesToWin); // Gets the player who wins enough times to end the game
-            if (endGamePlayer != null)
+            Player endGamePlayer = Players.Find(player => player.Wins == TimesToWin); // Gets the player who wins enough times to end the game
+            if (endGamePlayer != null) // If there is a player wins enough times
             {
-                // Card table announce the player who wins the most cash as the final winner
                 // (case 1) Someone wins the amount of time set at the beginning
-                GetEndGameReason(1, endGamePlayer);
+                GetEndGameReason(1, endGamePlayer); // Update the string representing the reason that ends the game
+                NextTask = GameTask.AnnounceFinalWinner; // Switch the game state to go to the Game Over page
+            }
+
+            // If there is only 1 player who havn't left the game still have cash
+            if (InGamePlayers.FindAll(player => player.Cash > 0).Count == 1)
+            {
+                // (case 2) Only 1 player who doesn't leave the game still has cash
+                GetEndGameReason(2, InGamePlayers.Find(player => player.Cash > 0));
                 NextTask = GameTask.AnnounceFinalWinner;
             }
         }
 
-        public void CheckNewGame(string[] keepPlaying)
+        /// <summary>
+        /// Overload method that takes a string array as parameter.
+        /// Is called when the web page is asking players for a new round.
+        /// Check if there's more than 1 players want to keep playing.
+        /// If the game can keep going, remove the quit players in the next round.
+        /// </summary>
+        /// <param name="keepPlaying">A string array given be the web page representing if each player wants to keep playing</param>
+        public void CheckEndGame(string[] keepPlaying)
         {
+            // I still check for all end game conditions in case this method is called unexpectedly
+
             // If there is only 1 player who havn't left the game still have cash
-            if (InGamePlayers.FindAll(player => player.cash > 0).Count == 1)
+            if (InGamePlayers.FindAll(player => player.Cash > 0).Count == 1)
             {
-                // Card table announce the player who wins the most cash as the final winner
                 // (case 2) Only 1 player who doesn't leave the game still has cash
-                GetEndGameReason(2, InGamePlayers.Find(player => player.cash > 0));
+                GetEndGameReason(2, InGamePlayers.Find(player => player.Cash > 0));
                 NextTask = GameTask.AnnounceFinalWinner;
             }
             else // There are still more than 1 players in current round and they all still have cash
             {
-                Player endGamePlayer = Players.Find(player => player.wins == TimesToWin); // Gets the player who wins enough times to end the game
+                Player endGamePlayer = Players.Find(player => player.Wins == TimesToWin); // Gets the player who wins enough times to end the game
                 if (endGamePlayer == null) // If there isn't a player who wins enough times
                 {
-                    // Ask each one of the players in the current round if they want to keep playing
-                    List<Player> readyToQuit = new List<Player>();
-                    for (int i = 0; i < InGamePlayers.Count; i++)
+                    List<Player> readyToQuit = new List<Player>(); // A temporary list that stores the players who wants to quit
+                    for (int i = 0; i < InGamePlayers.Count; i++) // Go through all the players that have not quit yet
                     {
-                        if (keepPlaying[i] == "No" || InGamePlayers[i].cash <= 0)
+                        if (keepPlaying[i] == "No" || InGamePlayers[i].Cash <= 0) // If the player chooses no on the web page of don't have money
                         {
-                            readyToQuit.Add(InGamePlayers[i]);
+                            readyToQuit.Add(InGamePlayers[i]); // Add the player to the temporary list
                         }
                     }
-                    foreach (Player quitPlayer in readyToQuit)
+                    foreach (Player quitPlayer in readyToQuit) // Go through all the players who wants to quit and switch their states to quit
                     {
-                        quitPlayer.status = PlayerStatus.quit;
+                        quitPlayer.Status = PlayerStatus.quit;
                     }
 
                     ResetPlayers(); // reset player's cards, card points, and status
                     if (InGamePlayers.Count <= 1) // if no more than 1 player wants to keep playing, end the game
                     {
-                        // Card table announce the player who wins the most cash as the final winner
                         // (case 3) // No enough players
                         GetEndGameReason(3, null);
                         NextTask = GameTask.AnnounceFinalWinner;
@@ -256,7 +335,7 @@ namespace RaceTo21Blazor
                     {
                         // Reset the variable and the deck for next game
                         CurrentPlayer = 0;
-                        RearrangePlayers();
+                        RearrangePlayers(); // Rearrange the players order in the list
                         Deck = new Deck();
                         Deck.Shuffle();
 
@@ -265,7 +344,6 @@ namespace RaceTo21Blazor
                 }
                 else
                 {
-                    // Card table announce the player who wins the most cash as the final winner
                     // (case 1) Someone wins the amount of time set at the beginning
                     GetEndGameReason(1, endGamePlayer);
                     NextTask = GameTask.AnnounceFinalWinner;
@@ -273,25 +351,29 @@ namespace RaceTo21Blazor
             }
         }
 
-        public string GetEndGameReason(int endReasonCode, Player endGamePlayer)
+        /// <summary>
+        /// Craete and update the reason that ends the game according to the given reason code and the player who ends the game.
+        /// </summary>
+        /// <param name="endReasonCode">Code represents different condition that ends the game</param>
+        /// <param name="endGamePlayer">The player who ends the game if there is one</param>
+        public void GetEndGameReason(int endReasonCode, Player endGamePlayer)
         {
             switch (endReasonCode)
             {
                 case 1: // Someone wins the amount of time set at the beginning
-                    endGameReason = $"{endGamePlayer.Name} ends the game by winning {endGamePlayer.wins} times";
+                    EndGameReason = $"{endGamePlayer.Name} ends the game by winning {endGamePlayer.Wins} times";
                     break;
                 case 2: // Only 1 player who doesn't leave the game still has cash
-                    endGameReason = $"Game's over because {endGamePlayer.Name} is the only player who hasn't quit and still has cash";
+                    EndGameReason = $"Game's over because {endGamePlayer.Name} is the only player who hasn't quit and still has cash";
                     break;
-                default: // No enough players
-                    endGameReason = $"Game's over because there is no more than 1 player wants to keep playing";
+                default: // No enough players (so no player ends the game)
+                    EndGameReason = $"Game's over because there is no more than 1 player wants to keep playing";
                     break;
             }
-            return endGameReason;
         }
 
         /// <summary>
-        /// Creates a player to add to the current game. Called by DoNextTask() method after getting the player names.
+        /// Creates a player to add to the current game.
         /// </summary>
         /// <param name="n">Names for creating a Player object</param>
         public void AddPlayer(string n)
@@ -308,7 +390,7 @@ namespace RaceTo21Blazor
         {
             int score = 0;
             // loop through all the cards and sum up their values
-            foreach (Card card in player.cards)
+            foreach (Card card in player.Cards)
             {
                 string faceValue = card.Id.Remove(card.Id.Length - 1); // Gets the card value from the card's short name
                 switch (faceValue)
@@ -335,7 +417,7 @@ namespace RaceTo21Blazor
         /// <summary>
         /// Checks if there's a winner at the end of each turn.
         /// </summary>
-        /// <returns>Return treu if there's a winner, otherwise, returns false</returns>
+        /// <returns>Return true if there's a winner, otherwise, returns false</returns>
         public bool CheckWinner()
         {
             int bustedPlayers = 0; // Count the number of busted players for every round
@@ -344,15 +426,15 @@ namespace RaceTo21Blazor
             // Loops throuh all the players who haven't quit
             foreach (Player player in InGamePlayers)
             {
-                if (player.status == PlayerStatus.win) // If theres a player's status is win, there must be a winner
+                if (player.Status == PlayerStatus.win) // If theres a player's status is win, there must be a winner
                 {
                     return true;
                 }
-                else if (player.status == PlayerStatus.active) // If the player's status is active
+                else if (player.Status == PlayerStatus.active) // If the player's status is active
                 {
                     activePlayers++; // Add a count and keep looping
                 }
-                else if (player.status == PlayerStatus.bust) // If the player's status is bust
+                else if (player.Status == PlayerStatus.bust) // If the player's status is bust
                 {
                     bustedPlayers++; // Add a count and keep looping
                 }
@@ -375,7 +457,7 @@ namespace RaceTo21Blazor
         }
 
         /// <summary>
-        /// Compare the scores and find out whose the winner
+        /// Compare the scores and find out whose the winner.
         /// </summary>
         /// <param name="currentPlayers">The players who haven't quit</param>
         /// <returns>Returns the winner</returns>
@@ -383,40 +465,41 @@ namespace RaceTo21Blazor
         {
             int highScore = 0; // Keep track of the highest score
             int bustedPlayers = 0; // Count the number of busted players for every round
-            foreach (var player in currentPlayers)
+            foreach (Player player in currentPlayers)
             {
                 // cardTable.ShowHand(player);
-                if (player.status == PlayerStatus.win) // return the player whose status is win as the winner immediately
+                if (player.Status == PlayerStatus.win) // return the player whose status is win as the winner immediately
                 {
                     return player;
                 }
-                if (player.status == PlayerStatus.stay) // if the player's status is stay
+                if (player.Status == PlayerStatus.stay) // if the player's status is stay
                 {
                     // Replace the highest score if the player's score is higher
-                    if (player.score > highScore)
+                    if (player.Score > highScore)
                     {
-                        highScore = player.score;
+                        highScore = player.Score;
                     }
                 }
-                if (player.status == PlayerStatus.bust) // keep track of the number of busted players
+                if (player.Status == PlayerStatus.bust) // keep track of the number of busted players
                 {
                     bustedPlayers++; 
                 }
-            }
-            if (highScore > 0) // someone scored, anyway!
-            {
-                // find the FIRST player in list who meets win condition as the winner
-                return currentPlayers.Find(player => player.score == highScore);
             }
 
             if (bustedPlayers == (InGamePlayers.Count - 1)) // If only 1 player isn't busted
             {
                 // the only player left should have a score that is less than 21 and they should be the winner
-                return currentPlayers.Find(player => player.score <= 21);
+                return currentPlayers.Find(player => player.Score <= 21);
+            }
+
+            if (highScore > 0) // If there's a high score
+            {
+                // find the FIRST player in list who gets the highest score
+                return currentPlayers.Find(player => player.Score == highScore);
             }
 
             // Shouldn't get to this point since the only player who is not busted will be the winner
-            return null; // everyone must have busted because nobody won!
+            return null; 
         }
 
         /// <summary>
@@ -426,33 +509,31 @@ namespace RaceTo21Blazor
         /// <param name="cashAmount">The cash ready to be paid</param>
         public void Pay(Player player, int cashAmount)
         {
-            player.cash += cashAmount;
+            player.Cash += cashAmount;
         }
 
         /// <summary>
-        /// Resets the cards, status, and scores of the players who haven't quit
+        /// Resets the cards, status, and scores of the players who haven't quit.
         /// </summary>
         public void ResetPlayers()
         {
             foreach (Player player in InGamePlayers)
             {
-                player.cards = new List<Card>();
-                player.status = PlayerStatus.active;
-                player.score = 0;
+                player.Cards = new List<Card>();
+                player.Status = PlayerStatus.active;
+                player.Score = 0;
             }
         }
 
         /// <summary>
-        /// Rearranges the order of the players
+        /// Rearranges the order of the players.
         /// </summary>
         public void RearrangePlayers()
         {
-            // CardTable.WriteCardTableMessage("Rearranging players order...");
-            Random rng = new Random();
             for (int i = 0; i < Players.Count; i++)
             {
                 Player tmp = Players[i];
-                int swapindex = rng.Next(Players.Count);
+                int swapindex = new Random().Next(Players.Count);
                 Players[i] = Players[swapindex];
                 Players[swapindex] = tmp;
             }

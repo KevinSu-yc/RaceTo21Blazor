@@ -1,7 +1,12 @@
 ﻿@page "/"
 
+@*In addtional to bootstap, I also add some of my own class for styling. I put them in a separate CSS file: wwwroot/css/my21style.css
+I then link the CSS file in wwwroot/index.html. I also change the font family of the whole page by linking Google font.*@
+
 <div class="container">
-    @if (game.NextTask == GameTask.GetNumberOfPlayers)
+
+    @* use game.NextTask that represents the game state to update the UI *@
+    @if (game.NextTask == GameTask.GetGameInfo) // Ask Player Info Page
     {
         <div class="alert bg-light shadow">
             <div class="row mt-sm-5 mb-3">
@@ -15,6 +20,7 @@
                     <div class="form-group row">
                         <label for="playerCount" class="col-sm-6 col-form-label text-sm-right">How Many Players?</label>
                         <div class="col-sm-auto">
+                            @* Updates the number of players and the player name inputs below *@
                             <select class="custom-select" id="playerCount" @onchange="e => SetPlayers(e)">
                                 <option value="2" selected>2</option>
                                 <option value="3">3</option>
@@ -27,6 +33,7 @@
                     <div class="form-group row">
                         <label for="winTimes" class="col-sm-6 col-form-label text-sm-right">How many times do a player have to win to end the game?</label>
                         <div class="col-sm-auto">
+                            @* Updates the number of rounds to win the game *@
                             <select class="custom-select" id="winTimes" @bind="game.TimesToWin">
                                 <option value="3" selected>3</option>
                                 <option value="4">4</option>
@@ -42,30 +49,34 @@
                         </div>
                     </div>
 
-                    @for (int i = 0; i < game.NumberOfPlayers; i++)
+                    @for (int i = 0; i < game.NumberOfPlayers; i++) // create player name inputs according to the number of players
                     {
-                        int playerNumber = i;
-                        string id = $"playerName_{playerNumber + 1}";
-                        bool isRepeated = game.CheckRepeatName(playerNumber);
+                        int playerIndex = i;
+                        Player p = game.Players[playerIndex];
+                        string id = $"playerName_{playerIndex + 1}";
+                        bool isRepeated = game.CheckRepeatName(p); // Check if the name is unique
 
                         <div class="form-group row">
-                            <label for="@id" class="col-sm-6 col-form-label text-sm-right">Player @(playerNumber + 1)</label>
+                            <label for="@id" class="col-sm-6 col-form-label text-sm-right">Player @(playerIndex + 1)</label>
                             <div class="col-sm-auto">
-                                <input type="text" class="form-control @(isRepeated ? "is-invalid" : "")" id="@id" name="@id" placeholder="Enter Player Name"
-                                       @bind="game.Players[playerNumber].Name" required autocomplete="off">
-                                <div class="invalid-feedback">
+                                @* if the name is not unique, add the 'is-invalid' class to highlight the input *@
+                                <input type="text" class="form-control @(isRepeated ? "is-invalid" : "")" id="@id" name="@id"
+                                       placeholder="Enter Player Name" @bind="p.Name" required autocomplete="off">
+                                
+                                <div class="invalid-feedback"> @* the 'invalid-feedback' only shows when the input above is invalid *@
                                     Please provide unique names.
                                 </div>
                             </div>
                         </div>
-                        playersAreValid = game.ValidatePlayers();
+                        playersAreValid = game.ValidatePlayers(); // Check if all player names are valid
                     }
 
                     <div class="row justify-content-center mt-sm-5">
                         <div class="col-sm-3">
-                            @if (playersAreValid)
+                            @if (playersAreValid) // enable the button if all player names are valid
                             {
-                                <button type="button" class="btn btn-block btn-dark" @onclick="() => bets = game.AskBet()">Next</button>
+                                // click the button update the bets list for the players and go to Ask Bet page
+                                <button type="button" class="btn btn-block btn-dark" @onclick="() => bets = game.GoAskBet()">Next</button>
                             }
                             else
                             {
@@ -74,7 +85,7 @@
                         </div>
                     </div>
                     <div class="row justify-content-center mt-sm-3">
-                        @if (playersAreValid)
+                        @if (playersAreValid) // show the end game conditions if all player names are valid
                         {
                             <div class="col-sm-6 alert alert-success">
                                 The game ends when a player <strong>Wins @game.TimesToWin Times</strong> or <strong>No More Than 1 Player</strong> wants to keep playing.
@@ -86,30 +97,31 @@
             </div>
         </div>
     }
-    else if (game.NextTask == GameTask.AskBet)
+    else if (game.NextTask == GameTask.AskBet) // Ask Bet Page
     {
         <h6>The winner of this round wins the total of twice amount of cash every player bets.</h6>
         <h2>How much do you want to bet?</h2>
-        @for (int i = 0; i < game.InGamePlayers.Count; i++)
+        @for (int i = 0; i < game.InGamePlayers.Count; i++) // create player rows according to the number of in game players
         {
             int playerIndex = i;
             Player p = game.InGamePlayers[playerIndex];
             <div class="row alert alert-secondary align-items-center py-4 px-0">
                 <div class="col-sm-3 text-sm-center">
                     <h4><strong>@p.Name</strong></h4>
-                    <h6>$@p.cash / @(p.wins > 1 ? $"{p.wins} wins" : $"{p.wins} win")</h6>
+                    <h6>$@p.Cash / @(p.Wins > 1 ? $"{p.Wins} wins" : $"{p.Wins} win")</h6>
                 </div>
                 <div class="col-sm-2">
                     <div class="row align-items-center">
                         <span>$</span>
+                        @* Set the maximum value to the player's total cash. if the entered bet is invalid, add 'is-invalid' class to highlight the input *@
                         <input type="number" class="form-control col ml-2 @(!betsRecord[playerIndex] ? "is-invalid" : "")" id="@($"playerCash_{playerIndex + 1}")" name="@($"playerCash_{playerIndex + 1}")"
-                               value="@Game.defaultBet" min="1" max="@(p.cash + bets[playerIndex])" @onchange="e => bet(e, playerIndex)">
+                               value="@Game.defaultBet" min="1" max="@(p.Cash + bets[playerIndex])" @onchange="e => bet(e, playerIndex)">
                         <div class="invalid-feedback">
                             Invaid Bet.
                         </div>
                     </div>
                 </div>
-                @if (p.cash == 0)
+                @if (p.Cash == 0)
                 {
                     <div class="col-sm-auto">
                         <span class="form-text">( You are betting all your cash )</span>
@@ -127,72 +139,78 @@
         <h4 class="text-center">The total amount in pot is: $@(game.CurrentPot).</h4>
         <div class="row justify-content-center">
             <div class="col-3 my-3">
-                @if (betsAreValid)
+                @if (betsAreValid) // if all the bets are valid, enable the button
                 {
+                    // click the button to go to the game playing page
                     <button class="btn btn-dark btn-block" @onclick="game.StartPlay">START</button>
                 }
                 else
                 {
-                    <button class="btn btn-dark btn-block" @onclick="game.StartPlay" disabled>START</button>
+                    <button class="btn btn-dark btn-block" disabled>START</button>
                 }
 
             </div>
         </div>
     }
-    else if (game.NextTask == GameTask.OfferFirstCard)
+    else if (game.NextTask == GameTask.PlayerTurn) // Game Playing Page
     {
         <h2>The total amount in pot is: $@(game.CurrentPot).</h2>
-        @for (int i = 0; i < game.InGamePlayers.Count; i++)
+        @for (int i = 0; i < game.InGamePlayers.Count; i++) // Create player rows
         {
             int playerIndex = i;
             Player p = game.InGamePlayers[playerIndex];
 
+            // If it's the player turn, highlight the player by adding the 'row-player-on' and 'player-on' class
             <div class="row row-player @(playerIndex == game.CurrentPlayer ? "row-player-on" : "") align-items-center">
                 <div class="col-sm-3 text-sm-center">
                     <h4><strong class="@(playerIndex == game.CurrentPlayer ? "player-on" : "")">@p.Name</strong></h4>
-                    <h6>$@p.cash / @(p.wins > 1 ? $"{p.wins} wins" : $"{p.wins} win")</h6>
+                    <h6>$@p.Cash / @(p.Wins > 1 ? $"{p.Wins} wins" : $"{p.Wins} win")</h6>
                 </div>
                 <div class="col">
                     <div class="row align-items-center">
-                        @foreach (Card card in p.cards)
+                        @foreach (Card card in p.Cards) // get the image names from the dictionary in deck
                         {
                             <img src="./sample-data/card-img/@game.Deck.cardImageName[card.Id]" />
                         }
                     </div>
                 </div>
                 <div class="col-sm-3 text-sm-center">
-                    <h4><strong>@p.score</strong></h4>
-                    @if (playerIndex == game.CurrentPlayer)
+                    <h4><strong>@p.Score</strong></h4>
+                    @if (playerIndex == game.CurrentPlayer) // if it's the player's turn
                     {
-                        if (p.status == PlayerStatus.active)
+                        if (p.Status == PlayerStatus.active) // if the player is still active, give buttons to deal or stay
                         {
-                            <button type="button" class="btn btn-dark" @onclick="() => roundWinner = game.Deal(p)">Deal</button>
-                            <button type="button" class="btn btn-light" @onclick="() => roundWinner = game.StayPlayer(p)">Stay</button>
+                            <button type="button" class="btn btn-dark" @onclick="() => roundWinner = game.Deal(p)">Deal</button> // Click to deal a card and update the round winner if there is one
+                            <button type="button" class="btn btn-light" @onclick="() => roundWinner = game.StayPlayer(p)">Stay</button> // Click to stay and update the round winner if there is one
                         }
-                        else if (p.status == PlayerStatus.stay)
+                        else if (p.Status == PlayerStatus.stay) // if the player choose to stay before
                         {
                             <div class="status-player status-stay">Stay</div>
+
+                            // call NextTurn method to skip the player's turn directly
                             roundWinner = game.NextTurn();
                             StateHasChanged(); // Need to call this function if the method is not called by events (ex: onclick or onchange)
                         }
-                        else if (p.status == PlayerStatus.bust)
+                        else if (p.Status == PlayerStatus.bust) // if the player is busted
                         {
                             <div class="status-player status-bust">Bust</div>
+
+                            // call NextTurn method to skip the player's turn directly
                             roundWinner = game.NextTurn();
                             StateHasChanged();
                         }
                     }
-                    else
+                    else // if it's not the player's turn, show their status only
                     {
-                        if (p.status == PlayerStatus.active)
+                        if (p.Status == PlayerStatus.active)
                         {
                             <div class="status-player status-active">Active</div>
                         }
-                        else if (p.status == PlayerStatus.stay)
+                        else if (p.Status == PlayerStatus.stay)
                         {
                             <div class="status-player status-stay">Stay</div>
                         }
-                        else if (p.status == PlayerStatus.bust)
+                        else if (p.Status == PlayerStatus.bust)
                         {
                             <div class="status-player status-bust">Bust</div>
                         }
@@ -200,37 +218,41 @@
                 </div>
             </div>
         }
+        
+        // go to the Announce Round Winner page immediately when a winner appears
     }
-    else if (game.NextTask == GameTask.AnnounceCurrentWinner)
+    else if (game.NextTask == GameTask.AnnounceRoundWinner) // Announce Round Winner Page
     {
-        @for (int i = 0; i < game.InGamePlayers.Count; i++)
+        @for (int i = 0; i < game.InGamePlayers.Count; i++) // create the player rows
         {
             int playerIndex = i;
             Player p = game.InGamePlayers[playerIndex];
-            <div class="row row-player @(p.status == PlayerStatus.win ? "row-player-win" : "") align-items-center">
+
+            // if the player is the round winner, highlight the player by adding the 'row-player-win' and 'player-win' class
+            <div class="row row-player @(p.Status == PlayerStatus.win ? "row-player-win" : "") align-items-center">
                 <div class="col-sm-3 text-sm-center">
-                    <h4><strong class="@(p.status == PlayerStatus.win ? "player-win" : "")">@p.Name</strong></h4>
-                    <h6>$@p.cash / @(p.wins > 1 ? $"{p.wins} wins" : $"{p.wins} win")</h6>
+                    <h4><strong class="@(p.Status == PlayerStatus.win ? "player-win" : "")">@p.Name</strong></h4>
+                    <h6>$@p.Cash / @(p.Wins > 1 ? $"{p.Wins} wins" : $"{p.Wins} win")</h6>
                 </div>
                 <div class="col">
                     <div class="row align-items-center">
-                        @foreach (Card card in p.cards)
+                        @foreach (Card card in p.Cards)
                         {
                             <img src="./sample-data/card-img/@game.Deck.cardImageName[card.Id]" />
                         }
                     </div>
                 </div>
                 <div class="col-sm-3 text-sm-center">
-                    <h4><strong>@p.score</strong></h4>
-                    @if (p.status == PlayerStatus.win)
+                    <h4><strong>@p.Score</strong></h4>
+                    @if (p.Status == PlayerStatus.win)
                     {
                         <div class="status-player status-win">Win</div>
                     }
-                    else if (p.status == PlayerStatus.stay)
+                    else if (p.Status == PlayerStatus.stay)
                     {
                         <div class="status-player status-stay">Stay</div>
                     }
-                    else if (p.status == PlayerStatus.bust)
+                    else if (p.Status == PlayerStatus.bust)
                     {
                         <div class="status-player status-bust">Bust</div>
                     }
@@ -247,14 +269,15 @@
         <h4 class="text-center"><strong>@roundWinner.Name</strong> wins $@(game.CurrentPot)!</h4>
         <div class="row justify-content-center">
             <div class="col-3 my-3">
+                @* Click the button to pay the round winner and go to the Check New Round page (or the Game Over page if the game ends) *@
                 <button class="btn btn-dark btn-block" @onclick="() => game.CheckNewRound(roundWinner)">CONTINUE</button>
             </div>
         </div>
     }
-    else if (game.NextTask == GameTask.CheckForNewGame)
+    else if (game.NextTask == GameTask.CheckForNewRound) // Check New Round Page 
     {
         <h2>Do you want to keep playing?</h2>
-        @for (int i = 0; i < game.InGamePlayers.Count; i++)
+        @for (int i = 0; i < game.InGamePlayers.Count; i++) // create player rows
         {
             int playerIndex = i;
             Player p = game.InGamePlayers[playerIndex];
@@ -262,10 +285,10 @@
             <div class="row alert alert-secondary align-items-center py-4 px-0">
                 <div class="col-sm-3 text-sm-center">
                     <h4><strong>@p.Name</strong></h4>
-                    <h6>$@p.cash / @(p.wins > 1 ? $"{p.wins} wins" : $"{p.wins} win")</h6>
+                    <h6>$@p.Cash / @(p.Wins > 1 ? $"{p.Wins} wins" : $"{p.Wins} win")</h6>
                 </div>
                 <div class="col-sm-auto">
-                    @if (p.cash == 0)
+                    @if (p.Cash == 0)
                     {
                         <h6>You have no more cash :(</h6>
                     }
@@ -273,6 +296,7 @@
                     {
                         <div class="row align-items-center">
                             <div class="form-check form-check-inline mr-5">
+                                @* click the radio button to update if the player wants to keep playing *@
                                 <input class="form-check-input resized-radio" type="radio" name="@radioId" id="@(radioId + "Y")" checked @onchange="e => UpdateKeepPlaying(e, playerIndex)" value="Yes">
                                 <label class="form-check-label resized-radio-label" for="@(radioId + "Y")">Yes</label>
                             </div>
@@ -288,18 +312,19 @@
 
         <div class="row justify-content-center">
             <div class="col-3 my-3">
-                <button class="btn btn-dark btn-block" @onclick="CheckNewGame">NEXT</button>
+                @* click the button to go back to the Ask Bet page (or Game Over page if the game ends) *@
+                <button class="btn btn-dark btn-block" @onclick="CheckEndGame">NEXT</button>
             </div>
         </div>
     }
-    else if (game.NextTask == GameTask.AnnounceFinalWinner)
+    else if (game.NextTask == GameTask.AnnounceFinalWinner) // Game Over Page
     {
         <div class="row justify-content-center">
             <h2>GAME OVER</h2>
         </div>
 
         <div class="row justify-content-center">
-            <p>@game.endGameReason</p>
+            <p>@game.EndGameReason</p>
         </div>
 
         <div class="row my-2 justify-content-center">
@@ -314,7 +339,7 @@
                     <p>is the final winner by winning</p>
                 </div>
                 <div class="row justify-content-center">
-                    <h3>$@game.rankedPlayers[0].cash</h3>
+                    <h3>$@game.rankedPlayers[0].Cash</h3>
                 </div>
             </div>
         </div>
@@ -330,11 +355,11 @@
             <small class="ml-sm-2 text-black-50">(* Rank order: cash -> wins -> player name *)</small>
         </div>
 
-        @for (int i = 0; i < game.NumberOfPlayers; i++)
+        @for (int i = 0; i < game.NumberOfPlayers; i++) // craete ranked player rows
         {
             int playerIndex = i;
             Player p = game.rankedPlayers[playerIndex];
-            double percentage = p.cash * 100.0 / game.rankedPlayers[0].cash;
+            double percentage = p.Cash * 100.0 / game.rankedPlayers[0].Cash;
             <div class="row alert alert-secondary align-items-center justify-content-between">
                 <div class="col-sm-auto">
                     @(playerIndex + 1)
@@ -342,21 +367,26 @@
                 <div class="col-sm-2">
                     @p.Name
                 </div>
+
+                @* Add a percentage bar to visualize the money difference among all players *@
                 <div class="col-sm">
                     <div class="progress">
                         <div class="progress-bar bg-secondary" role="progressbar" style="width: @((int)percentage + "%")" aria-valuenow="@((int)percentage)" aria-valuemin="0" aria-valuemax="100"></div>
                     </div>
                 </div>
+
                 <div class="col-sm-auto text-sm-right">
-                    $@p.cash
+                    $@p.Cash
                 </div>
                 <div class="col-sm-auto">
                     <div class="wins-wrapper">
-                        @(p.wins > 1 ? p.wins + " wins" : p.wins + " win")
+                        @(p.Wins > 1 ? p.Wins + " wins" : p.Wins + " win")
                     </div>
                 </div>
             </div>
         }
+
+        // Click the button to go back to Ask Player Info Page to start a new game
         <div class="row justify-content-center">
             <div class="col-3 my-3">
                 <button type="button" class="btn btn-dark btn-block" @onclick="StartNewGame">New Game</button>
@@ -367,12 +397,21 @@
 
 @code
 {
-    Game game = new Game();
+    Game game; // a game instance that keeps track of all the needed information to play the game
+
+    /* a bool value that keeps track of if all the player names are valid (default is false since the names are not entered yet)
+     * is used to enable the button on the web page
+     */
     bool playersAreValid = false;
 
-    int[] bets = { Game.defaultBet, Game.defaultBet };
+    int[] bets = { Game.defaultBet, Game.defaultBet }; // an int array that keeps track of how much each player bets (default 2 bets according to the web page)
+
+    /* a bool array that keeps track of if each player's bet is valid (between 1 to the player's money)
+     * is used to highlight the invalid inputs on the web page
+     */
     bool[] betsRecord = { true, true };
-    bool betsAreValid
+
+    bool betsAreValid // represents if all the bets are valid, is used to enable button on the web page
     {
         get
         {
@@ -384,40 +423,27 @@
         }
     }
 
+    /* a string array that keeps track of if each player wants to keep playing (default 2 "Yes" according to the web page)
+     * is used to check if the game should end and remove the quit players in the next round
+     */
     string[] keepPlaying = { "Yes", "Yes" };
 
-    Player roundWinner = new Player("");
+    Player roundWinner = new Player(""); // a player representing who wins the current round
 
-    public void bet(ChangeEventArgs e, int playerIndex)
-    {
-        int bet = int.Parse(e.Value.ToString());
-        Player p = game.InGamePlayers[playerIndex];
-
-        if (bet > p.cash + bets[playerIndex] || bet < 1)
-        {
-            betsRecord[playerIndex] = false;
-            return;
-        }
-
-        game.CollectBet(bet - bets[playerIndex], playerIndex);
-        bets[playerIndex] = bet;
-        betsRecord[playerIndex] = true;
-
-        return;
-    }
-
+    /// <summary>
+    /// Initialize tha game.
+    /// </summary>
     protected override void OnInitialized()
     {
-        game.SetUpGame();
-        playersAreValid = game.ValidatePlayers();
+        game = new Game();
     }
 
+    /// <summary>
+    /// Reset all the fields to default to get ready for a new game.
+    /// </summary>
     public void StartNewGame()
     {
         game = new Game();
-        game.SetUpGame();
-        playersAreValid = game.ValidatePlayers();
-
         playersAreValid = false;
         bets = new int[] { Game.defaultBet, Game.defaultBet };
         betsRecord = new bool[] { true, true };
@@ -425,11 +451,17 @@
         roundWinner = new Player("");
     }
 
+    /// <summary>
+    /// Is called while choosing the number of players.
+    /// Updates the players in the game object and also all the fields that will be used to track the players decisions.
+    /// </summary>
+    /// <param name="e">Event that sends the value representing the number of players</param>
     public void SetPlayers(ChangeEventArgs e)
     {
-        int count = int.Parse(e.Value.ToString());
-        game.SetPlayers(count);
+        int count = int.Parse(e.Value.ToString()); // Convert the event to int
+        game.SetPlayers(count); // Update the players in the game object
 
+        // updates the arrays to match the number of players
         bets = new int[count];
         betsRecord = new bool[count];
         keepPlaying = new string[count];
@@ -441,34 +473,73 @@
         }
     }
 
-    public void UpdateKeepPlaying(ChangeEventArgs e, int playerIndex)
+    /// <summary>
+    /// Updates the pot according to the given player's input.
+    /// </summary>
+    /// <param name="e">Event that sends the value representing how much the given player wants to bet</param>
+    /// <param name="playerIndex">The index of the given player</param>
+    public void bet(ChangeEventArgs e, int playerIndex)
     {
-        keepPlaying[playerIndex] = e.Value.ToString();
-    }
+        int bet = int.Parse(e.Value.ToString()); // convert event to int
+        Player p = game.InGamePlayers[playerIndex];
 
-    public void CheckNewGame()
-    {
-        game.CheckNewGame(keepPlaying);
-        if (game.NextTask == GameTask.AnnounceFinalWinner)
+        /* The UI I design updates players' money immediately when they change how much they want to bet 
+         * so the total of how much a player has is player.Cash + the money they want to bet
+         */
+        if (bet > p.Cash + bets[playerIndex] || bet < 1) // if the entered value is out of range
         {
+            // don't collect bet and mark the player's bet as invalid (false)
+            betsRecord[playerIndex] = false;
             return;
         }
 
+        // Collect the additional bet from what the player entered before (if the bet change is negetive, the game is actually returning the bet) 
+        game.CollectBet(bet - bets[playerIndex], playerIndex);
+        bets[playerIndex] = bet; // update the bet
+        betsRecord[playerIndex] = true; // set the bet as valid
+    }
+
+    /// <summary>
+    /// Updates the array that records whether the players want to keep playing.
+    /// </summary>
+    /// <param name="e">Event that sends the value representing whether the given player wants to keep playing</param>
+    /// <param name="playerIndex">The index of the given player</param>
+    public void UpdateKeepPlaying(ChangeEventArgs e, int playerIndex)
+    {
+        keepPlaying[playerIndex] = e.Value.ToString(); // convert the event to string and update the array
+    }
+
+    /// <summary>
+    /// Check if the game can end or need to get ready for a new round
+    /// </summary>
+    public void CheckEndGame()
+    {
+        game.CheckEndGame(keepPlaying); // Use the keepPlaying list to check if the game should end
+        if (game.NextTask == GameTask.AnnounceFinalWinner)
+        {
+            // If the game state is AnnounceFinalWinner, return immediately to go to the Game Over page
+            return;
+        }
+
+        // If the game state is not AnnounceFinalWinner, reset the fields according to the number of players who wants to keep playing
         int count = game.InGamePlayers.Count;
         bets = new int[count];
         betsRecord = new bool[count];
         keepPlaying = new string[count];
+
         for (int i = 0; i < count; i++)
         {
-
-            if (game.InGamePlayers[i].cash >= Game.defaultBet)
+            // If the player has enough money to bet the default bet
+            if (game.InGamePlayers[i].Cash >= Game.defaultBet)
             {
+                // collect default bet from the player and update the fields accordingly
                 bets[i] = Game.defaultBet;
                 betsRecord[i] = true;
                 game.CollectBet(bets[i], i);
             }
             else
             {
+                // if the player doesn't have enough money, don't collect bet but set the bet as invalid to force the player to enter a valid bet
                 bets[i] = 0;
                 betsRecord[i] = false;
             }

@@ -7,17 +7,11 @@ namespace RaceTo21Blazor
 	/// </summary>
 	public enum GameTask
 	{
-		GetNumberOfPlayers,
-		GetNames,
-		IntroducePlayers,
-		AskTimesToWin,
+		GetGameInfo,
 		AskBet,
-		OfferFirstCard,
 		PlayerTurn,
-		CheckForEnd,
-		GameOver,
-		CheckForNewGame,
-		AnnounceCurrentWinner,
+		AnnounceRoundWinner,
+		CheckForNewRound,
 		AnnounceFinalWinner
 	}
 }
