@@ -1,5 +1,5 @@
 # Race to 21 Blazor version
-This is a blazor version of the Race to 21 project I created previously. [(See Project))](https://github.com/KevinSu-yc/RaceTo21_Game_Improvement)
+This is a blazor version of the Race to 21 project I created previously. [(See Project)](https://github.com/KevinSu-yc/RaceTo21_Game_Improvement)
 
 ## Page flow
 
@@ -63,6 +63,13 @@ This is a blazor version of the Race to 21 project I created previously. [(See P
     * (If meet the end game condition, go to Gave Over page instead)
 
 <br>
+
+## Extreme Case Layout
+![Maiximum Case](./wwwroot/sample-data/readme-img/maximum-case.png)
+* 6 players and some players get more than 3 cards
+    * The player containers are resized when there are more than 3 players so a row can contain 2 players
+    * When a player gets more than 3 cards, the cards start to stack
+(The containers resize on Ask Bet page, Game Playing page, Announce Round Winner page, and Check New Round page)
 
 ## Game Over Page
 ![Ask Player Info Page](./wwwroot/sample-data/readme-img/game_over_page.png)

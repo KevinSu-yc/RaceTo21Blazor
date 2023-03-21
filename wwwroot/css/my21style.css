@@ -73,10 +73,6 @@ body {
     gap: 1%;
 }
 
-.col-many-names {
-    flex: 0 0 30.5%;
-}
-
 .col-many-players {
     flex: 0 0 49.5%;
 }
@@ -87,10 +83,6 @@ body {
 
 .max-width-100 {
     max-width: 100px;
-}
-
-.max-width-200 {
-    max-width: 200px;
 }
 
 .btn-left {
