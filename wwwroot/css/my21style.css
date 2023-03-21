@@ -68,3 +68,42 @@ body {
 .resized-radio-label {
     font-size: 1.25rem;
 }
+
+.gap-small {
+    gap: 1%;
+}
+
+.col-many-names {
+    flex: 0 0 30.5%;
+}
+
+.col-many-players {
+    flex: 0 0 49.5%;
+}
+
+.pokercard-img-many {
+    margin-right: -1.75rem;
+}
+
+.max-width-100 {
+    max-width: 100px;
+}
+
+.max-width-200 {
+    max-width: 200px;
+}
+
+.btn-left {
+    border-radius: 0.25rem 0 0 0.25rem;
+}
+
+.btn-right {
+    border-radius: 0 0.25rem 0.25rem 0;
+}
+
+
+@media (max-width: 992px) {
+    .pokercard-img {
+        margin-right: -1.75rem;
+    }
+}
