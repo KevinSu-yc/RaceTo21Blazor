@@ -69,7 +69,10 @@ This is a blazor version of the Race to 21 project I created previously. [(See P
 * 6 players and some players get more than 3 cards
     * The player containers are resized when there are more than 3 players so a row can contain 2 players
     * When a player gets more than 3 cards, the cards start to stack
+
 (The containers resize on Ask Bet page, Game Playing page, Announce Round Winner page, and Check New Round page)
+
+<br>
 
 ## Game Over Page
 ![Ask Player Info Page](./wwwroot/sample-data/readme-img/game_over_page.png)
