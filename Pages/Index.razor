@@ -108,6 +108,8 @@ I then link the CSS file in wwwroot/index.html. I also change the font family of
             {
                 int playerIndex = i;
                 Player p = game.InGamePlayers[playerIndex];
+
+                // When the number of players are more than 3, add a class to modify the layout to show the players in 2 columns
                 <div class="col-12 @(game.InGamePlayers.Count > 3 ? "col-many-players" : "")">
                     <div class="row alert alert-secondary align-items-center py-4 px-0">
                         <div class="col-sm-auto text-sm-center">
@@ -166,8 +168,9 @@ I then link the CSS file in wwwroot/index.html. I also change the font family of
                 int playerIndex = i;
                 Player p = game.InGamePlayers[playerIndex];
 
-                // If it's the player turn, highlight the player by adding the 'row-player-on' and 'player-on' class
+                // When the number of players are more than 3, add a class to modify the layout to show the players in 2 columns
                 <div class="col-12 @(game.InGamePlayers.Count > 3 ? "col-many-players" : "")">
+                    @* If it's the player turn, highlight the player by adding the 'row-player-on' and 'player-on' class *@
                     <div class="row row-player @(playerIndex == game.CurrentPlayer ? "row-player-on" : "") align-items-center">
                         <div class="col-sm-3 text-sm-center">
                             <h4><strong class="@(playerIndex == game.CurrentPlayer ? "player-on" : "")">@p.Name</strong></h4>
@@ -177,6 +180,7 @@ I then link the CSS file in wwwroot/index.html. I also change the font family of
                             <div class="row align-items-center">
                                 @foreach (Card card in p.Cards) // get the image names from the dictionary in deck
                                 {
+                                    // When the player is having more than 3 cards, add a class to stack the card images
                                     <img class="pokercard-img @(p.Cards.Count > 3 ? "pokercard-img-many" : "")" src="./sample-data/card-img/@game.Deck.cardImageName[card.Id]" />
                                 }
                             </div>
@@ -237,8 +241,9 @@ I then link the CSS file in wwwroot/index.html. I also change the font family of
                 int playerIndex = i;
                 Player p = game.InGamePlayers[playerIndex];
 
-                // if the player is the round winner, highlight the player by adding the 'row-player-win' and 'player-win' class
+                // When the number of players are more than 3, add a class to modify the layout to show the players in 2 columns
                 <div class="col-12 @(game.InGamePlayers.Count > 3 ? "col-many-players" : "")">
+                    @* if the player is the round winner, highlight the player by adding the 'row-player-win' and 'player-win' class *@
                     <div class="row row-player @(p.Status == PlayerStatus.win ? "row-player-win" : "") align-items-center">
                         <div class="col-sm-3 text-sm-center">
                             <h4><strong class="@(p.Status == PlayerStatus.win ? "player-win" : "")">@p.Name</strong></h4>
@@ -248,6 +253,7 @@ I then link the CSS file in wwwroot/index.html. I also change the font family of
                             <div class="row align-items-center">
                                 @foreach (Card card in p.Cards)
                                 {
+                                    // When the player is having more than 3 cards, add a class to stack the card images
                                     <img class="pokercard-img @(p.Cards.Count > 3 ? "pokercard-img-many" : "")" src="./sample-data/card-img/@game.Deck.cardImageName[card.Id]" />
                                 }
                             </div>
@@ -294,6 +300,8 @@ I then link the CSS file in wwwroot/index.html. I also change the font family of
                 int playerIndex = i;
                 Player p = game.InGamePlayers[playerIndex];
                 string radioId = $"nextRadio{playerIndex}";
+
+                // When the number of players are more than 3, add a class to modify the layout to show the players in 2 columns
                 <div class="col-12 @(game.InGamePlayers.Count > 3 ? "col-many-players" : "")">
                     <div class="row alert alert-secondary align-items-center py-4 px-0">
                         <div class="col-sm-auto text-sm-center mr-md-2">
