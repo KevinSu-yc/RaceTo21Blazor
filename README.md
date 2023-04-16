@@ -1,4 +1,6 @@
 # Race to 21 Blazor version
+A poker game that's similar to black jack.
+
 This is a blazor version of the Race to 21 project I created previously. [(See Project)](https://github.com/KevinSu-yc/RaceTo21_Game_Improvement)
 
 ## Page flow
